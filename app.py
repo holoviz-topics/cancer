@@ -4,6 +4,7 @@ import pandas as pd
 import numpy as np
 import holoviews.operation.datashader as hd
 import datashader as ds
+import hvplot.pandas  # noqa
 
 from scipy.sparse import csr_matrix
 from scipy.cluster.hierarchy import linkage, dendrogram
