@@ -76,7 +76,7 @@ class CellViewer(pn.viewable.Viewer):
     """
 
     leiden_res = param.Selector(default="leiden_res_0.50")
-    max_point_size = param.Integer(default=40)
+    max_dot_size = param.Integer(default=40)
 
     def __init__(self, adata, obs_df, marker_genes, expression_cutoff=0.1, **params):
         super().__init__(**params)
@@ -95,11 +95,11 @@ class CellViewer(pn.viewable.Viewer):
         self.template = pn.template.FastListTemplate(
             title="Cell Viewer",
             main=[self.main_placeholder],
-            sidebar=[self.param.leiden_res, self.param.max_point_size],
+            sidebar=[self.param.leiden_res, self.param.max_dot_size],
         )
         pn.state.onload(self._load)
 
-    @pn.depends("leiden_res", "max_point_size", watch=True)
+    @pn.depends("leiden_res", "max_dot_size", watch=True)
     def _load(self):
         with self.main_placeholder.param.update(loading=True):
             # Set up the selection stream
@@ -497,7 +497,7 @@ class CellViewer(pn.viewable.Viewer):
             axis=1,
         )
 
-        df["size"] = (df["percentage"] / df["percentage"].max()) * self.max_point_size
+        df["size"] = (df["percentage"] / df["percentage"].max()) * self.max_dot_size
         df["mean_expression_normalized"] = (
             df["mean_expression"] / df["mean_expression"].max()
         )
@@ -603,5 +603,5 @@ CellViewer(
     obs_df,
     marker_genes,
     leiden_res="leiden_res_0.50",
-    max_point_size=40,
+    max_dot_size=40,
 ).servable()
