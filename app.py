@@ -76,7 +76,7 @@ class CellViewer(pn.viewable.Viewer):
     """
 
     leiden_res = param.Selector(default="leiden_res_0.50")
-    max_point_size = param.Integer(default=40)
+    max_dot_size = param.Integer(default=10)
 
     def __init__(self, adata, obs_df, marker_genes, expression_cutoff=0.1, **params):
         super().__init__(**params)
@@ -86,8 +86,9 @@ class CellViewer(pn.viewable.Viewer):
         self.marker_genes = marker_genes
         self.expression_cutoff = expression_cutoff
         self.param["leiden_res"].objects = sorted(
-            [key for key in adata.uns.keys() if key.startswith("leiden_res")]
+            [key for key in adata.uns.keys() if key.startswith("leiden_res") and not key.endswith("colors")]
         )
+        self.reset_button = pn.widgets.Button(name="Reset selection", button_type="primary")
         # Initialize the dot plot data
         self.dp_data = self._compute_dotplot_data()
 
@@ -95,29 +96,60 @@ class CellViewer(pn.viewable.Viewer):
         self.template = pn.template.FastListTemplate(
             title="Cell Viewer",
             main=[self.main_placeholder],
-            sidebar=[self.param.leiden_res, self.param.max_point_size],
+            sidebar=[self.param.leiden_res, self.param.max_dot_size],
         )
+        
         pn.state.onload(self._load)
 
-    @pn.depends("leiden_res", "max_point_size", watch=True)
+    @pn.depends("leiden_res", "max_dot_size", watch=True)
     def _load(self):
         with self.main_placeholder.param.update(loading=True):
             # Set up the selection stream
-            self.selection_stream = hv.streams.BoundsXY()
-            self.umap_plot = self._create_umap_plot()
+            self.selection_stream = hv.streams.BoundsXY(bounds=(0,0,0,0))
+            pn.bind(self._reset_selection, self.reset_button, watch=True)
+            # self.reset_button.on_click(self._reset_selection())
+            self.umap_selection_area = hv.DynamicMap(
+                self._overlay_selection_area, streams=[self.selection_stream]
+            )
+            self.umap_plot = self._create_umap_plot() * self.umap_selection_area
             self.dotplot_w_bar = hv.DynamicMap(
                 self._plot_dotplot_w_bar, streams=[self.selection_stream]
             )
             self.dotplot_w_dendro = hv.DynamicMap(
                 self._plot_dotplot_w_dendro, streams=[self.selection_stream]
             )
-            self.main_placeholder.object = pn.Row(
+            
+            self.main_placeholder.object = pn.Column(
+                self.reset_button,
                 self.umap_plot.opts(active_tools=["box_select"]),
                 pn.Tabs(
+                    ("DE Dotplot", self.dotplot_w_bar),                    
                     ("MG Dotplot", self.dotplot_w_dendro),
-                    ("DE Dotplot", self.dotplot_w_bar),
                 ),
             )
+ 
+    def _reset_selection(self, event):
+        self.selection_stream.reset()
+        print('reset', self.selection_stream.bounds)
+        self.umap_selection_area.event(bounds=(0,0,0,0))
+
+    def _overlay_selection_area(self, bounds):
+        """
+        Return visible bounds box as selected area
+        """ 
+        if bounds is None:
+            bounds = (0, 0, 0, 0)
+        
+        return hv.Bounds(
+            bounds, vdims=["y", "x"]
+        ).opts(
+            alpha=0.1 if bounds else 0,
+            line_alpha=0.5,
+            line_color="black",
+            line_width=1,
+            line_dash="dashed",
+        )
+
 
     def _compute_dotplot_data(self):
         """
@@ -218,11 +250,12 @@ class CellViewer(pn.viewable.Viewer):
             datashade=True,
             aggregator=ds.count_cat(self.leiden_res),
             dynspread=True,
+            pixel_ratio=.5,
             tools=["box_select"],
             legend=False,
-            grid=True,
-            frame_width=500,
+            grid=False,
             frame_height=500,
+            responsive=True,
         )
         self.selection_stream.source = points
 
@@ -237,6 +270,7 @@ class CellViewer(pn.viewable.Viewer):
                 text=self.leiden_res,
                 text_color="black",
                 hover=False,
+                responsive=True,
             )
         )
 
@@ -245,7 +279,7 @@ class CellViewer(pn.viewable.Viewer):
         )
 
         inspect_selection = inspector(points).opts(
-            color="red", tools=["hover"], marker="square", size=5, fill_alpha=0
+            color="red", tools=["hover"], marker="square", size=8, fill_alpha=0.1
         )
 
         return points * labels * inspect_selection
@@ -316,15 +350,17 @@ class CellViewer(pn.viewable.Viewer):
             marker="o",
             tools=["hover"],
             colorbar=True,
-            width=600,
+            colorbar_position='left',
+            # width=600,
             frame_height=300,
-            responsive=False,
+            responsive=True,
             xlabel="Gene",
             ylabel="Cluster",
             invert_yaxis=False,
             show_legend=False,
             ylim=ylim,
             yticks=yticks,
+            fontscale=0.6,
         )
 
         if "gene_group" in df.columns:
@@ -348,14 +384,13 @@ class CellViewer(pn.viewable.Viewer):
                 kdims=["gene_id", "Group"],
                 vdims=["group_code", "gene_group"],
             ).opts(
+                responsive=True,
                 colorbar=False,
                 xaxis=None,
                 yaxis=None,
-                responsive=False,
-                cmap="glasbey_hv",
+                cmap=['darkgrey', 'lightgrey'] * (len(df["gene_id"].cat.categories)//2),
                 tools=["hover"],
                 toolbar=None,
-                width=600,
                 height=50,
                 show_frame=False,
                 show_grid=False,
@@ -402,11 +437,12 @@ class CellViewer(pn.viewable.Viewer):
         }
         df["cluster_pos"] = df["cluster"].map(cluster_positions)
 
-        cluster_values = sorted(self.dp_data["cluster"].unique())
-        min_cluster = min(cluster_values)
-        max_cluster = max(cluster_values)
+        # cluster_pos_values = sorted(df["cluster_pos"].unique())
+        min_cluster = min(clusters_ordered)
+        max_cluster = max(clusters_ordered)
         ylim = (max_cluster + 0.5, min_cluster - 0.5)
-        yticks = [(cluster, str(cluster)) for cluster in cluster_values]
+        yticks = [(pos, cluster) for pos, cluster in enumerate(clusters_ordered)]
+        # yticks = [(clust_pos, str(cluster)) for clust_pos in cluster_pos_values]
 
         points = hv.Points(
             df,
@@ -418,7 +454,7 @@ class CellViewer(pn.viewable.Viewer):
                 "mean_expression",
                 "gene_group",
             ],
-        ).opts(
+        ).redim(cluster_pos='Cluster').opts(
             xrotation=90,
             color="mean_expression_normalized",
             cmap="Reds",
@@ -428,14 +464,17 @@ class CellViewer(pn.viewable.Viewer):
             marker="o",
             tools=["hover"],
             colorbar=True,
-            width=600,
+            colorbar_position='left',
             frame_height=300,
+            responsive=True,
+            min_width=700,
             xlabel="Gene",
             ylabel="Cluster",
             invert_yaxis=False,
             show_legend=False,
             yticks=yticks,
             ylim=ylim,
+            fontscale=0.6,
         )
 
         # Create dendrogram paths
@@ -463,16 +502,18 @@ class CellViewer(pn.viewable.Viewer):
             xaxis=None,
             yaxis="right",
             show_frame=False,
-            fontsize={"labels": "8pt"},
+            # fontsize={"labels": "8pt"},
+            fontscale=0.6,
             tools=["hover"],
             yticks=yticks,
             ylim=ylim,
         )
 
-        return (points + dendrogram_plot).opts(shared_axes=True)
+        return (points + dendrogram_plot)
 
     def _get_filtered_data(self, bounds):
         """Filter data based on bounds selection."""
+        print('bounds', bounds)
         if bounds:
             clusters = (
                 self.obs_df.loc[
@@ -497,7 +538,7 @@ class CellViewer(pn.viewable.Viewer):
             axis=1,
         )
 
-        df["size"] = (df["percentage"] / df["percentage"].max()) * self.max_point_size
+        df["size"] = (df["percentage"] / df["percentage"].max()) * self.max_dot_size
         df["mean_expression_normalized"] = (
             df["mean_expression"] / df["mean_expression"].max()
         )
@@ -537,9 +578,8 @@ class CellViewer(pn.viewable.Viewer):
             marker="o",
             tools=["hover"],
             colorbar=True,
-            width=900,
             frame_height=300,
-            responsive=False,
+            responsive=True,
             xlabel="Gene",
             ylabel="Cluster",
             invert_yaxis=False,
@@ -575,7 +615,7 @@ class CellViewer(pn.viewable.Viewer):
             colorbar=False,
             xaxis=None,
             yaxis=None,
-            responsive=False,
+            responsive=True,
             cmap="glasbey_hv",
             tools=["hover"],
             toolbar=None,
@@ -603,5 +643,5 @@ CellViewer(
     obs_df,
     marker_genes,
     leiden_res="leiden_res_0.50",
-    max_point_size=40,
+    max_dot_size=10,
 ).servable()
