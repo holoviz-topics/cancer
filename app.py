@@ -391,7 +391,6 @@ class CellViewer(pn.viewable.Viewer):
                 cmap=['darkgrey', 'lightgrey'] * (len(df["gene_id"].cat.categories)//2),
                 tools=["hover"],
                 toolbar=None,
-                width=600,
                 height=50,
                 show_frame=False,
                 show_grid=False,
@@ -438,11 +437,12 @@ class CellViewer(pn.viewable.Viewer):
         }
         df["cluster_pos"] = df["cluster"].map(cluster_positions)
 
-        cluster_values = sorted(self.dp_data["cluster"].unique())
-        min_cluster = min(cluster_values)
-        max_cluster = max(cluster_values)
+        # cluster_pos_values = sorted(df["cluster_pos"].unique())
+        min_cluster = min(clusters_ordered)
+        max_cluster = max(clusters_ordered)
         ylim = (max_cluster + 0.5, min_cluster - 0.5)
-        yticks = [(cluster, str(cluster)) for cluster in cluster_values]
+        yticks = [(pos, cluster) for pos, cluster in enumerate(clusters_ordered)]
+        # yticks = [(clust_pos, str(cluster)) for clust_pos in cluster_pos_values]
 
         points = hv.Points(
             df,
@@ -454,7 +454,7 @@ class CellViewer(pn.viewable.Viewer):
                 "mean_expression",
                 "gene_group",
             ],
-        ).opts(
+        ).redim(cluster_pos='Cluster').opts(
             xrotation=90,
             color="mean_expression_normalized",
             cmap="Reds",
