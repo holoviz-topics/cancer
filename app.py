@@ -255,6 +255,7 @@ class CellViewer(pn.viewable.Viewer):
             legend=False,
             grid=False,
             frame_height=500,
+            responsive=True,
         )
         self.selection_stream.source = points
 
@@ -269,6 +270,7 @@ class CellViewer(pn.viewable.Viewer):
                 text=self.leiden_res,
                 text_color="black",
                 hover=False,
+                responsive=True,
             )
         )
 
@@ -277,7 +279,7 @@ class CellViewer(pn.viewable.Viewer):
         )
 
         inspect_selection = inspector(points).opts(
-            color="red", tools=["hover"], marker="square", size=5, fill_alpha=0
+            color="red", tools=["hover"], marker="square", size=8, fill_alpha=0.1
         )
 
         return points * labels * inspect_selection
@@ -348,9 +350,10 @@ class CellViewer(pn.viewable.Viewer):
             marker="o",
             tools=["hover"],
             colorbar=True,
-            width=600,
+            colorbar_position='left',
+            # width=600,
             frame_height=300,
-            responsive=False,
+            responsive=True,
             xlabel="Gene",
             ylabel="Cluster",
             invert_yaxis=False,
@@ -380,6 +383,7 @@ class CellViewer(pn.viewable.Viewer):
                 kdims=["gene_id", "Group"],
                 vdims=["group_code", "gene_group"],
             ).opts(
+                responsive=True,
                 colorbar=False,
                 xaxis=None,
                 yaxis=None,
@@ -462,6 +466,8 @@ class CellViewer(pn.viewable.Viewer):
             colorbar=True,
             width=600,
             frame_height=300,
+            responsive=True,
+            min_width=700,
             xlabel="Gene",
             ylabel="Cluster",
             invert_yaxis=False,
@@ -571,7 +577,7 @@ class CellViewer(pn.viewable.Viewer):
             colorbar=True,
             width=900,
             frame_height=300,
-            responsive=False,
+            responsive=True,
             xlabel="Gene",
             ylabel="Cluster",
             invert_yaxis=False,
@@ -607,7 +613,7 @@ class CellViewer(pn.viewable.Viewer):
             colorbar=False,
             xaxis=None,
             yaxis=None,
-            responsive=False,
+            responsive=True,
             cmap="glasbey_hv",
             tools=["hover"],
             toolbar=None,
@@ -635,5 +641,5 @@ CellViewer(
     obs_df,
     marker_genes,
     leiden_res="leiden_res_0.50",
-    max_dot_size=40,
+    max_dot_size=10,
 ).servable()
