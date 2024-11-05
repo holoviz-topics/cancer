@@ -76,7 +76,7 @@ class CellViewer(pn.viewable.Viewer):
     """
 
     leiden_res = param.Selector(default="leiden_res_0.50")
-    max_dot_size = param.Integer(default=40)
+    max_dot_size = param.Integer(default=10)
 
     def __init__(self, adata, obs_df, marker_genes, expression_cutoff=0.1, **params):
         super().__init__(**params)
