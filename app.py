@@ -253,8 +253,7 @@ class CellViewer(pn.viewable.Viewer):
             pixel_ratio=.5,
             tools=["box_select"],
             legend=False,
-            grid=True,
-            frame_width=500,
+            grid=False,
             frame_height=500,
         )
         self.selection_stream.source = points
