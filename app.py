@@ -86,7 +86,7 @@ class CellViewer(pn.viewable.Viewer):
         self.marker_genes = marker_genes
         self.expression_cutoff = expression_cutoff
         self.param["leiden_res"].objects = sorted(
-            [key for key in adata.uns.keys() if key.startswith("leiden_res")]
+            [key for key in adata.uns.keys() if key.startswith("leiden_res") and not key.endswith("colors")]
         )
         # Initialize the dot plot data
         self.dp_data = self._compute_dotplot_data()
