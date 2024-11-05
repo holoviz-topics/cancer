@@ -250,6 +250,7 @@ class CellViewer(pn.viewable.Viewer):
             datashade=True,
             aggregator=ds.count_cat(self.leiden_res),
             dynspread=True,
+            pixel_ratio=.5,
             tools=["box_select"],
             legend=False,
             grid=True,
