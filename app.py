@@ -88,6 +88,7 @@ class CellViewer(pn.viewable.Viewer):
         self.param["leiden_res"].objects = sorted(
             [key for key in adata.uns.keys() if key.startswith("leiden_res") and not key.endswith("colors")]
         )
+        self.reset_button = pn.widgets.Button(name="Reset selection", button_type="primary")
         # Initialize the dot plot data
         self.dp_data = self._compute_dotplot_data()
 
@@ -97,27 +98,58 @@ class CellViewer(pn.viewable.Viewer):
             main=[self.main_placeholder],
             sidebar=[self.param.leiden_res, self.param.max_dot_size],
         )
+        
         pn.state.onload(self._load)
 
     @pn.depends("leiden_res", "max_dot_size", watch=True)
     def _load(self):
         with self.main_placeholder.param.update(loading=True):
             # Set up the selection stream
-            self.selection_stream = hv.streams.BoundsXY()
-            self.umap_plot = self._create_umap_plot()
+            self.selection_stream = hv.streams.BoundsXY(bounds=(0,0,0,0))
+            pn.bind(self._reset_selection, self.reset_button, watch=True)
+            # self.reset_button.on_click(self._reset_selection())
+            self.umap_selection_area = hv.DynamicMap(
+                self._overlay_selection_area, streams=[self.selection_stream]
+            )
+            self.umap_plot = self._create_umap_plot() * self.umap_selection_area
             self.dotplot_w_bar = hv.DynamicMap(
                 self._plot_dotplot_w_bar, streams=[self.selection_stream]
             )
             self.dotplot_w_dendro = hv.DynamicMap(
                 self._plot_dotplot_w_dendro, streams=[self.selection_stream]
             )
-            self.main_placeholder.object = pn.Row(
+            
+            self.main_placeholder.object = pn.Column(
+                self.reset_button,
                 self.umap_plot.opts(active_tools=["box_select"]),
                 pn.Tabs(
+                    ("DE Dotplot", self.dotplot_w_bar),                    
                     ("MG Dotplot", self.dotplot_w_dendro),
-                    ("DE Dotplot", self.dotplot_w_bar),
                 ),
             )
+ 
+    def _reset_selection(self, event):
+        self.selection_stream.reset()
+        print('reset', self.selection_stream.bounds)
+        self.umap_selection_area.event(bounds=(0,0,0,0))
+
+    def _overlay_selection_area(self, bounds):
+        """
+        Return visible bounds box as selected area
+        """ 
+        if bounds is None:
+            bounds = (0, 0, 0, 0)
+        
+        return hv.Bounds(
+            bounds, vdims=["y", "x"]
+        ).opts(
+            alpha=0.1 if bounds else 0,
+            line_alpha=0.5,
+            line_color="black",
+            line_width=1,
+            line_dash="dashed",
+        )
+
 
     def _compute_dotplot_data(self):
         """
