@@ -360,6 +360,7 @@ class CellViewer(pn.viewable.Viewer):
             show_legend=False,
             ylim=ylim,
             yticks=yticks,
+            fontscale=0.6,
         )
 
         if "gene_group" in df.columns:
@@ -464,7 +465,7 @@ class CellViewer(pn.viewable.Viewer):
             marker="o",
             tools=["hover"],
             colorbar=True,
-            width=600,
+            colorbar_position='left',
             frame_height=300,
             responsive=True,
             min_width=700,
@@ -474,6 +475,7 @@ class CellViewer(pn.viewable.Viewer):
             show_legend=False,
             yticks=yticks,
             ylim=ylim,
+            fontscale=0.6,
         )
 
         # Create dendrogram paths
@@ -501,16 +503,18 @@ class CellViewer(pn.viewable.Viewer):
             xaxis=None,
             yaxis="right",
             show_frame=False,
-            fontsize={"labels": "8pt"},
+            # fontsize={"labels": "8pt"},
+            fontscale=0.6,
             tools=["hover"],
             yticks=yticks,
             ylim=ylim,
         )
 
-        return (points + dendrogram_plot).opts(shared_axes=True)
+        return (points + dendrogram_plot)
 
     def _get_filtered_data(self, bounds):
         """Filter data based on bounds selection."""
+        print('bounds', bounds)
         if bounds:
             clusters = (
                 self.obs_df.loc[
@@ -575,7 +579,6 @@ class CellViewer(pn.viewable.Viewer):
             marker="o",
             tools=["hover"],
             colorbar=True,
-            width=900,
             frame_height=300,
             responsive=True,
             xlabel="Gene",
