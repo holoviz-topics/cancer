@@ -97,6 +97,7 @@ class CellViewer(pn.viewable.Viewer):
             title="Cell Viewer",
             main=[self.main_placeholder],
             sidebar=[self.param.leiden_res, self.param.max_dot_size],
+            collapsed_sidebar=True,
         )
         
         pn.state.onload(self._load)
