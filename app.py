@@ -250,14 +250,13 @@ class CellViewer(pn.viewable.Viewer):
             cmap="Category20",
             datashade=True,
             aggregator=ds.count_cat(self.leiden_res),
-            dynspread=True,
-            pixel_ratio=.5,
             tools=["box_select"],
             legend=False,
             grid=False,
             frame_height=500,
             responsive=True,
         )
+        points = hd.dynspread(points, threshold=0.9, max_px=15)
         self.selection_stream.source = points
 
         labels = (
