@@ -181,7 +181,7 @@ class CellViewer(pn.viewable.Viewer):
         )
         umap_raster = hd.dynspread(
             umap_points,
-            threshold=0.1,
+            threshold=0.9,
             max_px=15,
         )
 
@@ -196,7 +196,7 @@ class CellViewer(pn.viewable.Viewer):
             text_color="white",
             hover=False,
             responsive=True,
-            text_alpha=0.8,
+            text_alpha=1,
             text_font_style="bold",
         )
         labels = labels_df.hvplot.labels(
@@ -431,7 +431,8 @@ class CellViewer(pn.viewable.Viewer):
             colorbar=False,
             xaxis=None,
             yaxis=None,
-            cmap=["darkgrey", "lightgrey"],
+            cmap=['darkgrey', 'lightgrey'],
+            color_levels=len(annotations_df.group_code.unique()), # tile the cmap alternating greys to cover all groups
             tools=["hover"],
             toolbar=None,
             height=50,
@@ -493,4 +494,4 @@ cv = CellViewer(
     leiden_res="leiden_res_0.50",
     max_dot_size=10,
 )
-cv.show()
+cv.servable()
