@@ -1,0 +1,28 @@
+name: nci_env
+channels:
+  - conda-forge
+dependencies:
+  - python
+  - holoviews
+  - bokeh
+  - hvplot
+  - panel
+  - datashader
+  - spatialpandas
+  - numpy
+  - pandas
+  - scipy
+  - ipykernel
+  - jupyterlab
+  - jupyter_bokeh
+  - scanpy
+  - anndata
+  - python-igraph
+  - leidenalg
+  - pooch
+  - scikit-image
+  - xarray
+  - sparse
+  - pip
+  - pip:
+    - holonote
