@@ -1,4 +1,5 @@
 import panel as pn
+
 pn.extension()
 
 import anndata as ad
@@ -54,22 +55,23 @@ marker_genes = {
 }
 
 # adata.write(filename='adata.h5ad')
-adata = ad.read_h5ad('adata.h5ad')
+adata = ad.read_h5ad("adata.h5ad")
 
 
-umap_df = pd.DataFrame(adata.obsm['X_umap'], columns=['UMAP1', 'UMAP2'])
-pca_df = pd.DataFrame(adata.obsm['X_pca'], columns=[f'PCA{1+i}' for i in range(adata.obsm['X_pca'].shape[-1])])
+umap_df = pd.DataFrame(adata.obsm["X_umap"], columns=["UMAP1", "UMAP2"])
+pca_df = pd.DataFrame(
+    adata.obsm["X_pca"],
+    columns=[f"PCA{1+i}" for i in range(adata.obsm["X_pca"].shape[-1])],
+)
 
 obs_df = adata.obs.join(umap_df.set_index(adata.obs.index))
-obs_df =  obs_df.join(pca_df.set_index(adata.obs.index))
+obs_df = obs_df.join(pca_df.set_index(adata.obs.index))
 var_df = adata.var.copy()
 
 # Extract expression data for marker genes
-sel_genes = marker_genes['CD16+ Mono'] #["TCF7L2", "FCGR3A", "LYN"],
+sel_genes = marker_genes["CD16+ Mono"]  # ["TCF7L2", "FCGR3A", "LYN"],
 expression_df = pd.DataFrame(
-    adata[:, sel_genes].X.toarray(), 
-    columns=sel_genes, 
-    index=adata.obs_names
+    adata[:, sel_genes].X.toarray(), columns=sel_genes, index=adata.obs_names
 )
 
 
@@ -89,9 +91,15 @@ class CellViewer(pn.viewable.Viewer):
         self.marker_genes = marker_genes
         self.expression_cutoff = expression_cutoff
         self.param["leiden_res"].objects = sorted(
-            [key for key in adata.uns.keys() if key.startswith("leiden_res") and not key.endswith("colors")]
+            [
+                key
+                for key in adata.uns.keys()
+                if key.startswith("leiden_res") and not key.endswith("colors")
+            ]
         )
-        self.reset_button = pn.widgets.Button(name="Reset selection", button_type="primary")
+        self.reset_button = pn.widgets.Button(
+            name="Reset selection", button_type="primary"
+        )
         # Initialize the dot plot data
         self.dp_data = self._compute_dotplot_data()
 
@@ -103,14 +111,14 @@ class CellViewer(pn.viewable.Viewer):
             collapsed_sidebar=True,
             main_layout=None,
         )
-        
+
         pn.state.onload(self._load)
 
     @pn.depends("leiden_res", "max_dot_size", watch=True)
     def _load(self):
         with self.main_placeholder.param.update(loading=True):
             # Set up the selection stream
-            self.selection_stream = hv.streams.BoundsXY(bounds=(0,0,0,0))
+            self.selection_stream = hv.streams.BoundsXY(bounds=(0, 0, 0, 0))
             pn.bind(self._reset_selection, self.reset_button, watch=True)
             # self.reset_button.on_click(self._reset_selection())
             self.umap_selection_area = hv.DynamicMap(
@@ -120,36 +128,33 @@ class CellViewer(pn.viewable.Viewer):
             self.dotplot_w_bar = hv.DynamicMap(
                 self._plot_dotplot_w_bar, streams=[self.selection_stream]
             )
-            
+
             self.main_placeholder.object = pn.Column(
                 self.reset_button,
                 self.umap_plot.opts(active_tools=["box_select"]),
                 self.dotplot_w_bar,
-                sizing_mode="stretch_both"
+                sizing_mode="stretch_both",
             )
- 
+
     def _reset_selection(self, event):
         self.selection_stream.reset()
-        print('reset', self.selection_stream.bounds)
-        self.umap_selection_area.event(bounds=(0,0,0,0))
+        print("reset", self.selection_stream.bounds)
+        self.umap_selection_area.event(bounds=(0, 0, 0, 0))
 
     def _overlay_selection_area(self, bounds):
         """
         Return visible bounds box as selected area
-        """ 
+        """
         if bounds is None:
             bounds = (0, 0, 0, 0)
-        
-        return hv.Bounds(
-            bounds, vdims=["y", "x"]
-        ).opts(
+
+        return hv.Bounds(bounds, vdims=["y", "x"]).opts(
             alpha=0.1 if bounds else 0,
             line_alpha=0.5,
             line_color="black",
             line_width=1,
             line_dash="dashed",
         )
-
 
     def _compute_dotplot_data(self):
         """
@@ -258,6 +263,21 @@ class CellViewer(pn.viewable.Viewer):
         points = hd.dynspread(points, threshold=0.9, max_px=15)
         self.selection_stream.source = points
 
+        labels_shadows = (
+            self.obs_df.groupby(self.leiden_res, as_index=False, observed=False)[
+                ["UMAP1", "UMAP2"]
+            ]
+            .mean()
+            .hvplot.labels(
+                x="UMAP1",
+                y="UMAP2",
+                text=self.leiden_res,
+                text_color="white",
+                hover=False,
+                responsive=True,
+            )
+        )
+
         labels = (
             self.obs_df.groupby(self.leiden_res, as_index=False, observed=False)[
                 ["UMAP1", "UMAP2"]
@@ -281,7 +301,7 @@ class CellViewer(pn.viewable.Viewer):
             color="black", tools=["hover"], marker="circle", size=8, fill_alpha=0.1
         )
 
-        return points * labels * inspect_selection
+        return points * labels_shadows * labels * inspect_selection
 
     def _datashade_hover_transform(self, df):
         """Transform data for hover functionality."""
@@ -314,24 +334,8 @@ class CellViewer(pn.viewable.Viewer):
 
         return pd.concat([sample_count, leiden_res, aggregated_row]).to_frame().T
 
-    def _plot_dotplot_w_bar(self, bounds):
-        """Create dot plot with bar and dendrogram visualization."""
-        df = self._get_filtered_data(bounds)
-
-        if len(df) == 0:
-            df = self.dp_data.copy()
-
-        df = self._prepare_dot_plot_data(df)
-
-        # Add dendrogram computation
-        cluster_gene_matrix = df.pivot_table(
-            index="cluster",
-            columns="gene_id",
-            values="mean_expression",
-            fill_value=0,
-            observed=False
-        )
-
+    def _prepare_dendrogram(self, cluster_gene_matrix):
+        """Prepare dendrogram data and paths for visualization."""
         X = cluster_gene_matrix.values
         cluster_dist = pdist(X, metric="euclidean")
         cluster_linkage = linkage(cluster_dist, method="average")
@@ -339,18 +343,50 @@ class CellViewer(pn.viewable.Viewer):
             cluster_linkage, labels=cluster_gene_matrix.index, no_plot=True
         )
 
-        clusters_ordered = dendro_data["ivl"]
-        cluster_positions = {
-            cluster: pos for pos, cluster in enumerate(clusters_ordered)
-        }
+        return dendro_data
+
+    def _plot_dendrogram(self, dendro_data, clusters_ordered, cluster_positions):
+        """Generate dendrogram plot from dendrogram data."""
+        dendro_paths = []
+        icoord = np.array(dendro_data["dcoord"])
+        dcoord = np.array(dendro_data["icoord"])
+
+        for xs, ys in zip(icoord, dcoord):
+            ys_new = [
+                (
+                    cluster_positions.get(clusters_ordered[int((y - 5.0) / 10.0)], y)
+                    if y % 10 == 5.0
+                    else y / max(dcoord.flatten()) * (len(clusters_ordered) - 1)
+                )
+                for y in ys
+            ]
+            dendro_paths.append(np.column_stack([xs, ys_new]))
+
+        ylim = (len(clusters_ordered) - 0.5, -0.5)
+        return hv.Path(dendro_paths, ["Distance", "Cluster"]).opts(
+            xlabel="",
+            invert_yaxis=False,
+            xaxis=None,
+            yaxis="right",
+            show_frame=False,
+            fontscale=0.6,
+            tools=["hover"],
+            responsive=True,
+            max_width=200,
+            max_height=300,
+            ylim=ylim,
+        )
+
+    def _plot_dotplot(self, df, clusters_ordered, cluster_positions):
+        """Generate dot plot from prepared data."""
         df["cluster_pos"] = df["cluster"].map(cluster_positions)
-
-        min_cluster = min(clusters_ordered)
-        max_cluster = max(clusters_ordered)
-        ylim = (max_cluster + 0.5, min_cluster - 0.5)
         yticks = [(pos, cluster) for pos, cluster in enumerate(clusters_ordered)]
+        ylim = (
+            max(cluster_positions.values()) + 0.5,
+            min(cluster_positions.values()) - 0.5,
+        )
 
-        points = hv.Points(
+        return hv.Points(
             df,
             kdims=["gene_id", "cluster_pos"],
             vdims=[
@@ -360,7 +396,7 @@ class CellViewer(pn.viewable.Viewer):
                 "mean_expression",
                 "gene_group",
             ],
-        ).redim(cluster_pos='Cluster').opts(
+        ).opts(
             xrotation=90,
             color="mean_expression_normalized",
             cmap="Reds",
@@ -370,99 +406,76 @@ class CellViewer(pn.viewable.Viewer):
             marker="o",
             tools=["hover"],
             colorbar=True,
-            colorbar_position='left',
+            colorbar_position="left",
             min_width=850,
             height=300,
             responsive=True,
             xlabel="Gene",
             ylabel="Cluster",
-            invert_yaxis=False,
-            show_legend=False,
             yticks=yticks,
             ylim=ylim,
             fontscale=0.6,
         )
 
-        # Create dendrogram paths
-        dendro_paths = []
-        icoord = np.array(dendro_data["dcoord"])
-        dcoord = np.array(dendro_data["icoord"])
+    def _plot_annotations(self, df):
+        """Generate annotations heatmap if gene_group is present."""
+        gene_groups = df[["gene_id", "gene_group"]].drop_duplicates()
+        gene_groups["group_code"] = gene_groups["gene_group"].factorize()[0]
 
-        for xs, ys in zip(icoord, dcoord):
-            ys_new = []
-            for y in ys:
-                if y % 10 == 5.0:
-                    leaf_id = int((y - 5.0) / 10.0)
-                    ys_new.append(cluster_positions[clusters_ordered[leaf_id]])
-                else:
-                    ys_new.append(
-                        y / max(dcoord.flatten()) * (len(clusters_ordered) - 1)
-                    )
-            dendro_paths.append(np.column_stack([xs, ys_new]))
-
-        dendrogram_plot = hv.Path(dendro_paths, ["Distance", "Cluster"]).opts(
-            xlabel="",
-            invert_yaxis=False,
-            xaxis=None,
-            yaxis="right",
-            show_frame=False,
-            fontscale=0.6,
-            tools=["hover"],
-            yticks=yticks,
-            ylim=ylim,
+        annotations_df = gene_groups.assign(Group="Group")
+        return hv.HeatMap(
+            annotations_df,
+            kdims=["gene_id", "Group"],
+            vdims=["group_code", "gene_group"],
+        ).opts(
             responsive=True,
-            max_width=200,
-            max_height=300,
+            colorbar=False,
+            xaxis=None,
+            yaxis=None,
+            cmap=["darkgrey", "lightgrey"],
+            tools=["hover"],
+            toolbar=None,
+            height=50,
+            show_frame=False,
+            min_width=850,
         )
 
-        base_plot = (points + dendrogram_plot)
+    def _plot_dotplot_w_bar(self, bounds):
+        """Main method to construct the entire layout."""
+        df = self._get_filtered_data(bounds)
+        if df.empty:
+            df = self.dp_data.copy()
+        df = self._prepare_dot_plot_data(df)
 
-        if "gene_group" in df.columns:
-            gene_groups = df[["gene_id", "gene_group"]].drop_duplicates()
-            gene_groups["group_code"] = gene_groups["gene_group"].factorize()[0]
+        cluster_gene_matrix = df.pivot_table(
+            index="cluster",
+            columns="gene_id",
+            values="mean_expression",
+            fill_value=0,
+            observed=False,
+        )
+        clusters_ordered = cluster_gene_matrix.index
+        cluster_positions = {
+            cluster: pos for pos, cluster in enumerate(clusters_ordered)
+        }
 
-            annotations_df = gene_groups[["gene_id", "group_code", "gene_group"]].copy()
-            annotations_df["Group"] = "Group"
-
-            annotations_df["gene_id"] = pd.Categorical(
-                annotations_df["gene_id"],
-                categories=df["gene_id"].cat.categories,
-                ordered=True,
+        dotplot = self._plot_dotplot(df, clusters_ordered, cluster_positions)
+    
+        try:
+            dendro_data = self._prepare_dendrogram(cluster_gene_matrix)
+            dendrogram = self._plot_dendrogram(
+                dendro_data, clusters_ordered, cluster_positions
             )
-            annotations_df["Group"] = pd.Categorical(
-                annotations_df["Group"], categories=["Group"], ordered=True
-            )
+            base_plot = dotplot + dendrogram
+        except Exception as e:
+            base_plot = dotplot + hv.Path([])
 
-            annotations_heatmap = hv.HeatMap(
-                annotations_df,
-                kdims=["gene_id", "Group"],
-                vdims=["group_code", "gene_group"],
-            ).opts(
-                responsive=True,
-                colorbar=False,
-                xaxis=None,
-                yaxis=None,
-                cmap=['darkgrey', 'lightgrey'] * (len(df["gene_id"].cat.categories)//2),
-                tools=["hover"],
-                toolbar=None,
-                height=50,
-                show_frame=False,
-                show_grid=False,
-                min_width=850,
-            )
-
-            layout = (
-                hv.Layout([base_plot, annotations_heatmap])
-                .cols(2)
-                .opts(hv.opts.Layout(shared_axes=True))
-            )
-            return layout
-
-        return base_plot
+        annotations = self._plot_annotations(df)
+        return (base_plot + annotations).opts(hv.opts.Layout(shared_axes=True)).cols(2)
 
     def _get_filtered_data(self, bounds):
         """Filter data based on bounds selection."""
-        print('bounds', bounds)
+        print("bounds", bounds)
         if bounds:
             clusters = (
                 self.obs_df.loc[
