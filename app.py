@@ -263,34 +263,27 @@ class CellViewer(pn.viewable.Viewer):
         points = hd.dynspread(points, threshold=0.9, max_px=15)
         self.selection_stream.source = points
 
-        labels_shadows = (
-            self.obs_df.groupby(self.leiden_res, as_index=False, observed=False)[
-                ["UMAP1", "UMAP2"]
-            ]
-            .mean()
-            .hvplot.labels(
-                x="UMAP1",
-                y="UMAP2",
-                text=self.leiden_res,
-                text_color="white",
-                hover=False,
-                responsive=True,
-            )
+        labels_df = self.obs_df.groupby(
+            self.leiden_res, as_index=False, observed=False
+        )[["UMAP1", "UMAP2"]].mean()
+        labels_shadows = labels_df.hvplot.labels(
+            x="UMAP1",
+            y="UMAP2",
+            text=self.leiden_res,
+            text_color="white",
+            hover=False,
+            responsive=True,
+            font_size="12px"
         )
 
-        labels = (
-            self.obs_df.groupby(self.leiden_res, as_index=False, observed=False)[
-                ["UMAP1", "UMAP2"]
-            ]
-            .mean()
-            .hvplot.labels(
-                x="UMAP1",
-                y="UMAP2",
-                text=self.leiden_res,
-                text_color="black",
-                hover=False,
-                responsive=True,
-            )
+        labels = labels_df.hvplot.labels(
+            x="UMAP1",
+            y="UMAP2",
+            text=self.leiden_res,
+            text_color="black",
+            hover=False,
+            responsive=True,
+            font_size="13px"
         )
 
         inspector = hd.inspect_points.instance(
@@ -460,7 +453,7 @@ class CellViewer(pn.viewable.Viewer):
         }
 
         dotplot = self._plot_dotplot(df, clusters_ordered, cluster_positions)
-    
+
         try:
             dendro_data = self._prepare_dendrogram(cluster_gene_matrix)
             dendrogram = self._plot_dendrogram(
