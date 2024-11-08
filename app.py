@@ -1,3 +1,4 @@
+
 import panel as pn
 
 pn.extension()
@@ -122,7 +123,7 @@ class CellViewer(pn.viewable.Viewer):
 
         self.main_placeholder = pn.pane.Placeholder(sizing_mode="stretch_both")
         self.template = pn.template.FastListTemplate(
-            title="Cell Viewer",
+            title="HoloViz Single Cell Gene Expression Demo",
             main=[self.main_placeholder],
             sidebar=[self.param.leiden_res, self.param.max_dot_size],
             collapsed_sidebar=True,
@@ -138,7 +139,7 @@ class CellViewer(pn.viewable.Viewer):
             umap_points = self._plot_umap_points()
             dot_plot = hv.DynamicMap(
                 self._plot_dot_plot, streams=[self.selection_stream]
-            )
+            ).opts(framewise=True)
             self.main_placeholder.object = pn.Column(umap_points, dot_plot)
 
     def _setup_selection(self):
@@ -250,7 +251,6 @@ class CellViewer(pn.viewable.Viewer):
         return pd.concat([sample_count, leiden_res, aggregated_row]).to_frame().T
 
     def _plot_dot_plot(self, selection_expr):
-        # Apply the selection expression to the dataset
         if selection_expr:
             selected_dataset = self.cells_dataset.select(selection_expr)
         else:
@@ -259,31 +259,26 @@ class CellViewer(pn.viewable.Viewer):
         df = selected_dataset.data
 
         if df.empty:
-            # Use all data if selection is empty
             df = self.cells_df.copy()
 
-        # Prepare data for plotting
         dp_df = self._prepare_dot_plot_data(df)
-        cluster_gene_matrix, clusters_ordered, cluster_positions = (
-            self._prepare_dendrogram_data(dp_df)
-        )
-        dp_df["cluster_pos"] = dp_df["cluster"].map(cluster_positions)
-        yticks = list(range(len(self.cells_df[self.leiden_res].unique())))
-        ylim = min(yticks) - 0.5, max(yticks) + 0.5
+        dp_points, cluster_positions = self._plot_dp_points(dp_df)
+        cluster_gene_matrix, clusters_ordered, _ = self._prepare_dendrogram_data(dp_df, cluster_positions)
 
         # Create plots
         layout = hv.Layout([])
-        layout += self._plot_dp_points(dp_df, yticks, ylim)
+        layout += dp_points
         try:
             layout += self._plot_dendrogram(
-                cluster_gene_matrix, clusters_ordered, cluster_positions, yticks, ylim
-            )
+                cluster_gene_matrix, clusters_ordered, cluster_positions
+            ).opts(shared_axes=True)
         except Exception as e:
+            print(f"Exception in _plot_dendrogram: {e}")
             layout += hv.Path([])
-        layout += self._plot_annotations(dp_df)
+        layout += self._plot_annotations(dp_df).opts(shared_axes=True)
 
-        # Ensure shared axes
-        return layout.opts(shared_axes=True).cols(2)
+        return layout.opts(shared_axes=True, framewise=True).cols(2)
+
 
     def _prepare_dot_plot_data(self, df):
         gene_names = self.all_marker_genes
@@ -369,7 +364,21 @@ class CellViewer(pn.viewable.Viewer):
 
         return dp_df
 
-    def _prepare_dendrogram_data(self, dp_df):
+    # def _prepare_dendrogram_data(self, dp_df):
+    #     cluster_gene_matrix = dp_df.pivot_table(
+    #         index="cluster",
+    #         columns="gene_id",
+    #         values="mean_expression",
+    #         fill_value=0,
+    #         observed=False,
+    #     )
+    #     clusters_ordered = sorted(cluster_gene_matrix.index, key=lambda x: int(x))
+    #     cluster_positions = {
+    #         cluster: pos for pos, cluster in enumerate(clusters_ordered)
+    #     }
+    #     return cluster_gene_matrix, clusters_ordered, cluster_positions
+
+    def _prepare_dendrogram_data(self, dp_df, cluster_positions):
         cluster_gene_matrix = dp_df.pivot_table(
             index="cluster",
             columns="gene_id",
@@ -378,13 +387,19 @@ class CellViewer(pn.viewable.Viewer):
             observed=False,
         )
         clusters_ordered = sorted(cluster_gene_matrix.index, key=lambda x: int(x))
-        cluster_positions = {
-            cluster: pos for pos, cluster in enumerate(clusters_ordered)
-        }
         return cluster_gene_matrix, clusters_ordered, cluster_positions
 
-    def _plot_dp_points(self, dp_df, yticks, ylim):
+    def _plot_dp_points(self, dp_df):
         # Map clusters to positions
+        dp_df["cluster"] = dp_df["cluster"].astype(str)
+        cluster_labels = dp_df["cluster"].unique()
+        cluster_positions = {label: idx for idx, label in enumerate(sorted(cluster_labels, key=int))}
+        dp_df["cluster_pos"] = dp_df["cluster"].map(cluster_positions)
+
+        yticks = list(cluster_positions.values())
+        ytick_labels = list(cluster_positions.keys())
+        ylim = min(yticks) - 0.5, max(yticks) + 0.5
+
         dp_points = hv.Points(
             dp_df,
             kdims=["gene_id", "cluster_pos"],
@@ -395,7 +410,7 @@ class CellViewer(pn.viewable.Viewer):
                 "mean_expression",
             ],
         ).opts(
-            xrotation=90,
+            xrotation=45,
             color="mean_expression_normalized",
             cmap="Reds",
             size="size",
@@ -405,17 +420,19 @@ class CellViewer(pn.viewable.Viewer):
             tools=["hover"],
             colorbar=True,
             colorbar_position="left",
-            min_height=300,
+            min_height=400,
             responsive=True,
             xlabel="Gene",
             ylabel="Cluster",
-            yticks=yticks,
+            yticks=list(zip(yticks, ytick_labels)),
             ylim=ylim,
-            invert_yaxis=False,
+            invert_yaxis=True,
             show_legend=False,
-            fontscale=0.6,
+            fontscale=0.7,
+            xaxis='top',
         )
-        return dp_points
+        return dp_points, cluster_positions
+
 
     def _plot_annotations(self, dp_df):
         gene_groups = dp_df[["gene_id", "gene_group"]].drop_duplicates()
@@ -430,27 +447,41 @@ class CellViewer(pn.viewable.Viewer):
             responsive=True,
             colorbar=False,
             xaxis=None,
-            yaxis=None,
-            cmap=['darkgrey', 'lightgrey'],
-            color_levels=len(annotations_df.group_code.unique()), # tile the cmap alternating greys to cover all groups
+            # yaxis='bare',
+            # cmap=['darkgrey', 'lightgrey'],
+            color_levels=len(annotations_df.group_code.unique()),
             tools=["hover"],
             toolbar=None,
             height=50,
             show_frame=False,
             min_width=850,
+            ylabel = '',
         )
         return annotations_plot
 
     def _plot_dendrogram(
-        self, cluster_gene_matrix, clusters_ordered, cluster_positions, yticks, ylim
+        self, cluster_gene_matrix, clusters_ordered, cluster_positions
     ):
-        """Generate dendrogram plot from dendrogram data."""
         X = cluster_gene_matrix.values
         cluster_dist = pdist(X, metric="euclidean")
         cluster_linkage = linkage(cluster_dist, method="average")
         dendro_data = dendrogram(
-            cluster_linkage, labels=cluster_gene_matrix.index, no_plot=True
+            cluster_linkage, labels=clusters_ordered, orientation='left', no_plot=True
         )
+
+        dendro_paths = []
+        icoord = np.array(dendro_data["dcoord"])
+        dcoord = np.array(dendro_data["icoord"])
+
+        # Create a mapping from cluster labels to positions
+        pos_dict = {str(k): v for k, v in cluster_positions.items()}
+
+        # Mapping of leaves in dendrogram to cluster positions
+        ivl = dendro_data['ivl']
+        leaf_positions = [pos_dict[label] for label in ivl]
+
+        # Maximum distance for scaling internal nodes
+        max_dcoord = np.max(dcoord)
 
         dendro_paths = []
         icoord = np.array(dendro_data["dcoord"])
@@ -469,19 +500,21 @@ class CellViewer(pn.viewable.Viewer):
 
         return hv.Path(dendro_paths, ["distance", "cluster_pos"]).opts(
             xlabel="",
-            invert_yaxis=False,
+            ylabel="",
+            invert_yaxis=True,
             xaxis=None,
-            yaxis="right",
+            yaxis=None,
             show_frame=False,
-            fontscale=0.6,
-            tools=["hover"],
+            fontscale=0.7,
+            tools=[],
             responsive=True,
-            max_width=200,
-            min_height=300,
-            yticks=yticks,
-            ylim=ylim,
-            ylabel="Cluster",
+            width=200,
+            line_width=2,
+            line_alpha=.6,
+            line_color='black',
+            # min_height=400,
         )
+
 
     def __panel__(self):
         return self.template
