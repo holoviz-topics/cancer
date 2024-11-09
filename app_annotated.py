@@ -83,7 +83,7 @@ class CellViewer(pn.viewable.Viewer):
     A Panel viewer class for visualizing cell data with UMAP plots and dot plots.
     """
 
-    leiden_res = param.Selector(default="leiden_res_0.50")
+    leiden_res = param.Selector(default="cell_type")
     max_dot_size = param.Integer(default=10)
 
     def __init__(self, adata, obs_df, marker_genes, expression_cutoff=0.1, **params):
@@ -529,7 +529,7 @@ cv = CellViewer(
     adata,
     obs_df,
     marker_genes,
-    leiden_res="leiden_res_0.50",
+    leiden_res="cell_type",
     max_dot_size=10,
 )
 cv.servable()
