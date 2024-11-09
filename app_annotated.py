@@ -391,7 +391,7 @@ class CellViewer(pn.viewable.Viewer):
 
     def _order_cluster_labels(self, cluster_labels):
         if all([x.isdigit() for x in cluster_labels]):
-            cluster_labels = [int(x) for x in cluster_labels]
+            return [str(i) for i in sorted([int(x) for x in cluster_labels])]
         return sorted(cluster_labels)
 
     def _plot_dp_points(self, dp_df):
