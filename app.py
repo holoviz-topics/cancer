@@ -144,7 +144,7 @@ class CellViewer(pn.viewable.Viewer):
 
     def _setup_selection(self):
         # Apply link_selections
-        self.selection_linker = link_selections.instance()
+        self.selection_linker = link_selections.instance(unselected_alpha=0.4)
 
         # Create a stream that triggers when selection changes
         self.selection_stream = hv.streams.Stream.define(
@@ -182,7 +182,7 @@ class CellViewer(pn.viewable.Viewer):
         )
         umap_raster = hd.dynspread(
             umap_points,
-            threshold=0.9,
+            threshold=0.95,
             max_px=15,
         )
 
@@ -220,35 +220,23 @@ class CellViewer(pn.viewable.Viewer):
         return linked_umap_points * labels_glow * labels * inspect_selection
 
     def _datashade_hover_transform(self, df):
-        """Transform data for hover functionality."""
-        aggregated_df = df.groupby("sample", observed=False).agg(
-            {
-                "n_genes_by_counts": ["mean", "median"],
-                "total_counts": ["mean", "median"],
-                "log1p_total_counts": ["mean", "median"],
-                "pct_counts_in_top_50_genes": "std",
-                "pct_counts_in_top_100_genes": "std",
-                "pct_counts_in_top_200_genes": "std",
-                "pct_counts_in_top_500_genes": "std",
-                "PCA1": "mean",
-            }
-        )
-
-        aggregated_df.columns = [
-            "_".join(col).strip() for col in aggregated_df.columns.values
+        cols = [
+            'index',
+            'n_genes_by_counts',
+            'total_counts',
+            'log1p_total_counts',
+            'pct_counts_in_top_50_genes',
+            'pct_counts_in_top_100_genes',
+            'pct_counts_in_top_200_genes',
+            'pct_counts_in_top_500_genes',
+            'PCA1',
+            'UMAP1',
+            'UMAP2'
         ]
-        aggregated_df["UMAP1"] = df["UMAP1"].mean()
-        aggregated_df["UMAP2"] = df["UMAP2"].mean()
-
-        aggregated_row = (
-            aggregated_df.reset_index().drop("sample", axis=1).mean().rename("row")
-        )
-        sample_count = df["sample"].value_counts().rename("row")
-        leiden_res = df[self.leiden_res].value_counts().rename("row")
-        leiden_res = leiden_res.loc[leiden_res != 0]
-        leiden_res.index = "cluster_" + leiden_res.index.astype(str)
-
-        return pd.concat([sample_count, leiden_res, aggregated_row]).to_frame().T
+        if df.empty:
+            return pd.DataFrame(columns=cols)
+        out = df.iloc[0].to_frame().T
+        return out[cols]
 
     def _plot_dot_plot(self, selection_expr):
         if selection_expr:
@@ -363,20 +351,6 @@ class CellViewer(pn.viewable.Viewer):
         )
 
         return dp_df
-
-    # def _prepare_dendrogram_data(self, dp_df):
-    #     cluster_gene_matrix = dp_df.pivot_table(
-    #         index="cluster",
-    #         columns="gene_id",
-    #         values="mean_expression",
-    #         fill_value=0,
-    #         observed=False,
-    #     )
-    #     clusters_ordered = sorted(cluster_gene_matrix.index, key=lambda x: int(x))
-    #     cluster_positions = {
-    #         cluster: pos for pos, cluster in enumerate(clusters_ordered)
-    #     }
-    #     return cluster_gene_matrix, clusters_ordered, cluster_positions
 
     def _prepare_dendrogram_data(self, dp_df, cluster_positions):
         cluster_gene_matrix = dp_df.pivot_table(
