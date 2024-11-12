@@ -23,6 +23,7 @@ dependencies:
   - scikit-image
   - xarray
   - sparse
+  - decoupler-py
   - pip
   - pip:
     - holonote
