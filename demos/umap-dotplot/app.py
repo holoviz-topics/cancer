@@ -206,7 +206,7 @@ class CellViewer(pn.viewable.Viewer):
 
         labels_df = self.obs_df.groupby(
             self.result, as_index=False, observed=False
-        )[["UMAP1", "UMAP2"]].mean()
+        )[["UMAP1", "UMAP2"]].median()
 
         # bold text does not align with non-bold text
         # labels_glow = labels_df.hvplot.labels(
@@ -227,6 +227,8 @@ class CellViewer(pn.viewable.Viewer):
             text_color="black",
             hover=False,
             responsive=True,
+            text_alpha=.8,
+            text_font_style="bold",
         )
 
         inspector = hd.inspect_points.instance(
