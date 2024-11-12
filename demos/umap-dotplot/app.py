@@ -1,8 +1,3 @@
-
-import panel as pn
-
-pn.extension()
-
 import colorcet
 import anndata as ad
 import holoviews as hv
