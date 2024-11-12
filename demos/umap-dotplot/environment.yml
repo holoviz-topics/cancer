@@ -1,0 +1,20 @@
+name: nci-gene-expression-demo
+channels:
+  - conda-forge
+dependencies:
+  - python=3.12
+  - jupyterlab
+  - panel
+  - colorcet
+  - anndata
+  - holoviews
+  - pandas
+  - numpy
+  - datashader
+  - dask
+  - scipy
+  - hvplot
+  - pip
+  - spatialpandas
+  - pip:
+    - wget
