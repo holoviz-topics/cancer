@@ -57,8 +57,26 @@ marker_genes = {
     "pDC": ["GZMB", "IL3RA", "COBLL1", "TCF4"],
 }
 
-adata = ad.read_h5ad("adata-annotated.h5ad")
+from pathlib import Path
+import wget
 
+DATA_URL = 'https://datasets.holoviz.org/gene_expression/v1/adata-annotated.h5ad'
+DATA_DIR = Path('./data')
+DATA_FILENAME = Path(DATA_URL).name
+DATA_PATH = DATA_DIR / DATA_FILENAME
+
+print(f'Local Data Path: {DATA_PATH}')
+
+DATA_DIR.mkdir(parents=True, exist_ok=True)
+
+# Check if the file already exists, otherwise download it
+if not DATA_PATH.exists():
+    print(f'Data downloading to: {DATA_PATH}')
+    wget.download(DATA_URL, out=str(DATA_PATH))
+else:
+    print(f'Data exists at: {DATA_PATH}')
+
+adata = ad.read_h5ad(DATA_PATH)
 
 umap_df = pd.DataFrame(adata.obsm["X_umap"], columns=["UMAP1", "UMAP2"])
 pca_df = pd.DataFrame(
