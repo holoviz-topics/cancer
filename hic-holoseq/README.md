@@ -13,3 +13,6 @@ Steps to getting HTAN data in HoloSeq:
 4. checkout [HoloSeq](https://github.com/fubar2/holoSeq/tree/main),
    create its venv, and activate that.
 5. run `panel serve holoseq_display.py --show --args --inFile ../test.hseq.gz --size 1000`
+
+
+An pre-converted HTAN file for [GSM6326543 is available(530MB)](https://pub-867b121072f54b4a9eecdf01cd27246b.r2.dev/GSM6326543_A001C007.hg38.nodups.pairs.hseq.gz)

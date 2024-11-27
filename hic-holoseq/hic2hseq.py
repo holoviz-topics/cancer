@@ -4,7 +4,6 @@ https://github.com/fubar2/holoSeq/blob/main/HoloSeqOverview.md
 """
 
 import gzip
-import sys
 import logging
 
 import hicstraw
@@ -23,8 +22,17 @@ class GzipOut:
     def __enter__(self):
         return self
 
-    def __exit__(self, exc_type, exc_value, traceback):
+    def __exit__(self, *_):
         self.f.close()
+    
+
+def cumulative_sum(x: list[int]) -> list[int]:
+    if not x:
+        return x
+    y = [x[0]]
+    for n in x[1:]:
+        y.append(n + y[-1])
+    return y
     
 
 def convert_hic_to_hseq(hicfn, ostream, max_chrom, title):
@@ -35,9 +43,11 @@ def convert_hic_to_hseq(hicfn, ostream, max_chrom, title):
     resolution = min(hic.getResolutions())
 
     ## write header
+    offsets = cumulative_sum([c.length for c in chroms])
+    cnames = [c.name for c in chroms]
     ostream.write(
         f"@v1HoloSeq2D\n@title {title}\n" + 
-        "".join([f"@H1 {c.name} {c.length}\n" for c in chroms])
+        "".join([f"@H1 {chrom} {offset}\n" for chrom, offset in zip(cnames, offsets)])
     )
     
     xbase = 0
@@ -56,7 +66,9 @@ def convert_hic_to_hseq(hicfn, ostream, max_chrom, title):
             #     ostream.write(f"{xbase + xcoord} {ybase + ycoord} {count}\n")
 
             for result in hicstraw.straw("observed", 'NONE', hicfn, cx.name, cy.name, method, resolution):
-                ostream.write(f"{xbase + result.binX} {ybase + result.binY}\n" * int(result.counts))
+                x = xbase + result.binY
+                y = ybase + result.binX
+                ostream.write(f"{x} {y}\n" * int(result.counts))
             ybase += cy.length
         xbase += cx.length
 
