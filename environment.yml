@@ -1,4 +1,4 @@
-name: nci_env
+name: nci
 channels:
   - conda-forge
 dependencies:
@@ -24,6 +24,4 @@ dependencies:
   - xarray
   - sparse
   - decoupler-py
-  - pip
-  - pip:
-    - holonote
+  - holonote
