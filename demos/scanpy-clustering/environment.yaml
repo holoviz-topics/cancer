@@ -1,4 +1,4 @@
-name: nci
+name: scanpy_holoviz
 channels:
   - conda-forge
 dependencies:
