@@ -1,0 +1,27 @@
+name: squidpy_spatial
+channels:
+  - conda-forge
+dependencies:
+  - python
+  - holoviews
+  - bokeh
+  - hvplot
+  - panel
+  - datashader
+  - spatialpandas
+  - numpy
+  - pandas
+  - scipy
+  - ipykernel
+  - jupyterlab
+  - jupyter_bokeh
+  - pooch
+  - scikit-image
+  - xarray
+  - sparse
+  - holonote
+  - pip
+  - pip:
+    - 'squidpy[interactive]'
+    - anndata
+    - scanpy
