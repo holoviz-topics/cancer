@@ -1,0 +1,23 @@
+name: cohort_explorer
+channels:
+  - conda-forge
+dependencies:
+  - python
+  - holoviews
+  - bokeh
+  - hvplot
+  - panel
+  - datashader
+  - colorcet
+  - numpy
+  - pandas
+  - ipykernel
+  - jupyterlab
+  - jupyter_bokeh
+  - google-cloud-bigquery
+  - pip
+  - pip:
+    - pntables
+    - git+https://github.com/CancerDataAggregator/cdapython.git
+    - squarify
+    - lumen[ai]
