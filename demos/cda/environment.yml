@@ -1,4 +1,4 @@
-name: nci
+name: cda_demo
 channels:
   - conda-forge
 dependencies:
@@ -17,11 +17,8 @@ dependencies:
   - ipykernel
   - jupyterlab
   - jupyter_bokeh
-  - scanpy
-  - anndata
-  - python-igraph
-  - leidenalg
-  - pooch
-  - scikit-image
-  - sparse
-  - decoupler-py
+  - google-cloud-bigquery
+  - pip
+  - pip:
+    - pntables
+    - git+https://github.com/CancerDataAggregator/cdapython.git
