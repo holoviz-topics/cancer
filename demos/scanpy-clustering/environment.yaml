@@ -8,6 +8,7 @@ dependencies:
   - hvplot
   - panel
   - datashader
+  - dask <2025.1.0
   - spatialpandas
   - numpy
   - pandas
