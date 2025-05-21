@@ -25,3 +25,6 @@ dependencies:
   - scikit-image
   - sparse
   - decoupler-py
+  - pip
+  - pip:
+     - git+https://github.com/holoviz-topics/hv-anndata.git@68501d79031818bdd35b1985ec1b07943f0abf77
