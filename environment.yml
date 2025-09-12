@@ -27,4 +27,4 @@ dependencies:
   - decoupler-py
   - pip
   - pip:
-     - git+https://github.com/holoviz-topics/hv-anndata.git@cf67907ad93ad80bd1652b6eae33095307a49dbb
+     - git+https://github.com/holoviz-topics/hv-anndata.git@main
